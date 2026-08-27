@@ -1,0 +1,30 @@
+name: Import framework source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    if: ${{ !contains(github.event.head_commit.message, '[framework-import]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+
+      - name: Copy framework from chessproject/main
+        run: |
+          git clone --depth 1 --branch main https://github.com/Valeri-afk/chessproject.git /tmp/chessproject
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
+          cp -a /tmp/chessproject/ui_framework/. .
+
+      - name: Commit imported framework
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Import UI framework from chessproject/main [framework-import]"
+          git push
