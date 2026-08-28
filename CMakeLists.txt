@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
+
+if(NOT WIN32)
+    message(FATAL_ERROR "ui_framework is Windows-only and must be configured on Windows.")
+endif()
+
 project(ui_framework VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# UI Framework is an SDL3-based library. SDL is provided by the consuming
-# project; this repository does not vendor SDL sources or runtime binaries.
+# UI Framework is an SDL3-based Windows library. SDL is provided by the
+# consuming project; this repository does not vendor SDL sources or runtime
+# binaries.
 # Minimum supported SDL 3.x baseline:
 #   SDL3       3.2.0
 #   SDL3_image 3.2.0
