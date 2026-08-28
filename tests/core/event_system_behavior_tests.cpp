@@ -1,6 +1,6 @@
 #include "event_dispatcher.hpp"
 #include "node_tree.hpp"
-#include "panel_node.hpp"
+#include "ui_framework/panel_node.hpp"
 #include "ui_framework/components/checkbox.hpp"
 
 #include <cassert>
