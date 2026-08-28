@@ -6,10 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # UI Framework is an SDL3-based library. SDL is provided by the consuming
 # project; this repository does not vendor SDL sources or runtime binaries.
-# The current minimum SDL3 API baseline is 3.2.0.
+# Minimum supported SDL 3.x baseline:
+#   SDL3       3.2.0
+#   SDL3_image 3.2.0
+#   SDL3_ttf   3.2.0
 find_package(SDL3 3.2.0 CONFIG REQUIRED)
-find_package(SDL3_image CONFIG REQUIRED)
-find_package(SDL3_ttf CONFIG REQUIRED)
+find_package(SDL3_image 3.2.0 CONFIG REQUIRED)
+find_package(SDL3_ttf 3.2.0 CONFIG REQUIRED)
 
 add_library(ui_framework STATIC
     src/components/button.cpp
