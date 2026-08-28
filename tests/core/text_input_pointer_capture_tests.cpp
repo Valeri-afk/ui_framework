@@ -1,8 +1,8 @@
 #include "ui_framework/components/text_input.hpp"
 
-#include "ui_framework/core/input_system.hpp"
-#include "ui_framework/core/layout_system.hpp"
-#include "ui_framework/core/node_tree.hpp"
+#include "input_system.hpp"
+#include "layout_system.hpp"
+#include "node_tree.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
