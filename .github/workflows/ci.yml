@@ -159,3 +159,9 @@ jobs:
 
       - name: Build demo
         run: cmake --build build-demo --config Debug --parallel
+
+      - name: Run demo smoke test
+        shell: bash
+        env:
+          SDL_VIDEODRIVER: dummy
+        run: ./build-demo/ui_framework_demo --smoke
