@@ -8,6 +8,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include <cassert>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 
@@ -15,20 +16,24 @@ namespace
 {
     std::filesystem::path findTestFont()
     {
-        const std::filesystem::path filePath(__FILE__);
-        const std::filesystem::path sourceRoot = filePath.parent_path().parent_path().parent_path();
-        const std::filesystem::path fromSource = sourceRoot / "chess_client" / "fonts" / "Roboto-Medium.ttf";
-        const std::filesystem::path fromWorkingDirectory =
-            std::filesystem::current_path() / ".." / "chess_client" / "fonts" / "Roboto-Medium.ttf";
-        const std::filesystem::path fromRepositoryRoot =
-            std::filesystem::current_path() / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const char *windir = std::getenv("WINDIR");
+        const std::filesystem::path windowsDirectory =
+            windir != nullptr ? std::filesystem::path(windir) : std::filesystem::path("C:/Windows");
 
-        if (std::filesystem::exists(fromSource))
-            return fromSource;
-        if (std::filesystem::exists(fromWorkingDirectory))
-            return fromWorkingDirectory;
-        if (std::filesystem::exists(fromRepositoryRoot))
-            return fromRepositoryRoot;
+        const std::filesystem::path fontDirectory = windowsDirectory / "Fonts";
+        constexpr const char *fontNames[] = {
+            "segoeui.ttf",
+            "arial.ttf",
+            "tahoma.ttf"
+        };
+
+        for (const char *fontName : fontNames)
+        {
+            const std::filesystem::path candidate = fontDirectory / fontName;
+            if (std::filesystem::exists(candidate))
+                return candidate;
+        }
+
         return {};
     }
 }
