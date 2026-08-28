@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  framework-tests:
+    name: ${{ matrix.os }} / ${{ matrix.profile }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        profile: [minimum, development]
+
+    steps:
+      - name: Checkout framework
+        uses: actions/checkout@v4
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Configure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci/consumer
+          cat > ci/consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.24)
+          project(ui_framework_ci LANGUAGES CXX)
+
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          set(CMAKE_CXX_EXTENSIONS OFF)
+
+          include(FetchContent)
+
+          set(SDL_SHARED ON CACHE BOOL "Build SDL3 shared library" FORCE)
+          set(SDL_STATIC OFF CACHE BOOL "Build SDL3 static library" FORCE)
+          set(SDL_TESTS OFF CACHE BOOL "Build SDL3 tests" FORCE)
+          set(SDL_EXAMPLES OFF CACHE BOOL "Build SDL3 examples" FORCE)
+          set(SDL_INSTALL OFF CACHE BOOL "Install SDL3" FORCE)
+
+          set(SDLIMAGE_SAMPLES OFF CACHE BOOL "Build SDL3_image samples" FORCE)
+          set(SDLIMAGE_TESTS OFF CACHE BOOL "Build SDL3_image tests" FORCE)
+          set(SDLIMAGE_INSTALL OFF CACHE BOOL "Install SDL3_image" FORCE)
+          set(SDLIMAGE_PNG OFF CACHE BOOL "Enable PNG support" FORCE)
+          set(SDLIMAGE_JPG OFF CACHE BOOL "Enable JPEG support" FORCE)
+          set(SDLIMAGE_TIF OFF CACHE BOOL "Enable TIFF support" FORCE)
+          set(SDLIMAGE_WEBP OFF CACHE BOOL "Enable WebP support" FORCE)
+          set(SDLIMAGE_AVIF OFF CACHE BOOL "Enable AVIF support" FORCE)
+          set(SDLIMAGE_JXL OFF CACHE BOOL "Enable JPEG XL support" FORCE)
+          set(SDLIMAGE_SVG OFF CACHE BOOL "Enable SVG support" FORCE)
+
+          set(SDLTTF_VENDORED ON CACHE BOOL "Use vendored SDL_ttf dependencies" FORCE)
+          set(SDLTTF_SAMPLES OFF CACHE BOOL "Build SDL3_ttf samples" FORCE)
+          set(SDLTTF_TESTS OFF CACHE BOOL "Build SDL3_ttf tests" FORCE)
+          set(SDLTTF_INSTALL OFF CACHE BOOL "Install SDL3_ttf" FORCE)
+
+          if("${UI_FRAMEWORK_CI_PROFILE}" STREQUAL "minimum")
+            set(SDL3_GIT_TAG release-3.2.0)
+            set(SDL3_IMAGE_GIT_TAG release-3.2.0)
+            set(SDL3_TTF_GIT_TAG release-3.2.0)
+          elseif("${UI_FRAMEWORK_CI_PROFILE}" STREQUAL "development")
+            set(SDL3_GIT_TAG release-3.4.4)
+            set(SDL3_IMAGE_GIT_TAG release-3.4.2)
+            set(SDL3_TTF_GIT_TAG release-3.2.2)
+          else()
+            message(FATAL_ERROR "Unknown UI_FRAMEWORK_CI_PROFILE: ${UI_FRAMEWORK_CI_PROFILE}")
+          endif()
+
+          FetchContent_Declare(
+            SDL3
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+            GIT_TAG ${SDL3_GIT_TAG}
+            GIT_SHALLOW TRUE
+            OVERRIDE_FIND_PACKAGE
+          )
+          FetchContent_Declare(
+            SDL3_image
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+            GIT_TAG ${SDL3_IMAGE_GIT_TAG}
+            GIT_SHALLOW TRUE
+            OVERRIDE_FIND_PACKAGE
+          )
+          FetchContent_Declare(
+            SDL3_ttf
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+            GIT_TAG ${SDL3_TTF_GIT_TAG}
+            GIT_SHALLOW TRUE
+            OVERRIDE_FIND_PACKAGE
+          )
+
+          FetchContent_MakeAvailable(SDL3 SDL3_image SDL3_ttf)
+
+          add_subdirectory("${UI_FRAMEWORK_SOURCE_DIR}" ui_framework)
+          EOF
+
+          cmake -S ci/consumer -B build \
+            -DUI_FRAMEWORK_SOURCE_DIR="$GITHUB_WORKSPACE" \
+            -DUI_FRAMEWORK_CI_PROFILE="${{ matrix.profile }}" \
+            -DUI_FRAMEWORK_BUILD_TESTS=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --build-config Debug --output-on-failure
+
+  integration-demo:
+    name: External consumer / minimum SDL baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout framework
+        uses: actions/checkout@v4
+
+      - name: Checkout demo
+        uses: actions/checkout@v4
+        with:
+          repository: Valeri-afk/ui_framework_demo
+          path: ui_framework_demo
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Configure demo against this framework commit
+        run: |
+          cmake -S ui_framework_demo -B build-demo \
+            -DFETCHCONTENT_SOURCE_DIR_UI_FRAMEWORK="$GITHUB_WORKSPACE" \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build demo
+        run: cmake --build build-demo --config Debug --parallel
