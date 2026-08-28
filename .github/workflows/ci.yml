@@ -164,4 +164,5 @@ jobs:
         shell: bash
         env:
           SDL_VIDEODRIVER: dummy
+          SDL_RENDER_DRIVER: software
         run: ./build-demo/ui_framework_demo --smoke
