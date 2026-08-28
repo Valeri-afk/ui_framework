@@ -63,13 +63,13 @@ jobs:
           set(SDLTTF_INSTALL OFF CACHE BOOL "Install SDL3_ttf" FORCE)
 
           if("${UI_FRAMEWORK_CI_PROFILE}" STREQUAL "minimum")
-            set(SDL3_GIT_TAG release-3.2.0)
-            set(SDL3_IMAGE_GIT_TAG release-3.2.0)
-            set(SDL3_TTF_GIT_TAG release-3.2.0)
+            set(UI_FRAMEWORK_SDL_VERSION 3.2.0)
+            set(UI_FRAMEWORK_SDL_IMAGE_VERSION 3.2.0)
+            set(UI_FRAMEWORK_SDL_TTF_VERSION 3.2.0)
           elseif("${UI_FRAMEWORK_CI_PROFILE}" STREQUAL "development")
-            set(SDL3_GIT_TAG release-3.4.4)
-            set(SDL3_IMAGE_GIT_TAG release-3.4.2)
-            set(SDL3_TTF_GIT_TAG release-3.2.2)
+            set(UI_FRAMEWORK_SDL_VERSION 3.4.4)
+            set(UI_FRAMEWORK_SDL_IMAGE_VERSION 3.4.2)
+            set(UI_FRAMEWORK_SDL_TTF_VERSION 3.2.2)
           else()
             message(FATAL_ERROR "Unknown UI_FRAMEWORK_CI_PROFILE: ${UI_FRAMEWORK_CI_PROFILE}")
           endif()
@@ -77,21 +77,21 @@ jobs:
           FetchContent_Declare(
             SDL3
             GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-            GIT_TAG ${SDL3_GIT_TAG}
+            GIT_TAG release-${UI_FRAMEWORK_SDL_VERSION}
             GIT_SHALLOW TRUE
             OVERRIDE_FIND_PACKAGE
           )
           FetchContent_Declare(
             SDL3_image
             GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
-            GIT_TAG ${SDL3_IMAGE_GIT_TAG}
+            GIT_TAG release-${UI_FRAMEWORK_SDL_IMAGE_VERSION}
             GIT_SHALLOW TRUE
             OVERRIDE_FIND_PACKAGE
           )
           FetchContent_Declare(
             SDL3_ttf
             GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
-            GIT_TAG ${SDL3_TTF_GIT_TAG}
+            GIT_TAG release-${UI_FRAMEWORK_SDL_TTF_VERSION}
             GIT_SHALLOW TRUE
             OVERRIDE_FIND_PACKAGE
           )
@@ -114,8 +114,13 @@ jobs:
         run: ctest --test-dir build --build-config Debug --output-on-failure
 
   integration-demo:
-    name: External consumer / minimum SDL baseline
+    name: External consumer / ${{ matrix.profile }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [minimum, development]
+
     steps:
       - name: Checkout framework
         uses: actions/checkout@v4
@@ -130,9 +135,26 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Configure demo against this framework commit
+        shell: bash
         run: |
+          set -euo pipefail
+
+          if [[ "${{ matrix.profile }}" == "minimum" ]]; then
+            SDL_VERSION=3.2.0
+            SDL_IMAGE_VERSION=3.2.0
+            SDL_TTF_VERSION=3.2.0
+          else
+            SDL_VERSION=3.4.4
+            SDL_IMAGE_VERSION=3.4.2
+            SDL_TTF_VERSION=3.2.2
+          fi
+
           cmake -S ui_framework_demo -B build-demo \
-            -DFETCHCONTENT_SOURCE_DIR_UI_FRAMEWORK="$GITHUB_WORKSPACE" \
+            -DUI_FRAMEWORK_SOURCE_DIR="$GITHUB_WORKSPACE" \
+            -DUI_FRAMEWORK_GIT_TAG="$GITHUB_SHA" \
+            -DUI_FRAMEWORK_SDL_VERSION="$SDL_VERSION" \
+            -DUI_FRAMEWORK_SDL_IMAGE_VERSION="$SDL_IMAGE_VERSION" \
+            -DUI_FRAMEWORK_SDL_TTF_VERSION="$SDL_TTF_VERSION" \
             -DCMAKE_BUILD_TYPE=Debug
 
       - name: Build demo
