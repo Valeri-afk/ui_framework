@@ -1,7 +1,7 @@
 #include "ui_framework/components/text_input.hpp"
 
-#include "ui_framework/core/event_dispatcher.hpp"
-#include "ui_framework/core/node_tree.hpp"
+#include "event_dispatcher.hpp"
+#include "node_tree.hpp"
 
 #include <cassert>
 #include <memory>

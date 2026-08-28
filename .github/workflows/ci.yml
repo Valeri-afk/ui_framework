@@ -10,27 +10,27 @@ permissions:
 
 jobs:
   framework-tests:
-    name: ${{ matrix.os }} / ${{ matrix.profile }}
-    runs-on: ${{ matrix.os }}
+    name: windows-latest / ${{ matrix.profile }}
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
         profile: [minimum, development]
 
     steps:
       - name: Checkout framework
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up CMake
         uses: lukka/get-cmake@latest
 
       - name: Configure
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          mkdir -p ci/consumer
-          cat > ci/consumer/CMakeLists.txt <<'EOF'
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path 'ci/consumer' | Out-Null
+
+          @'
           cmake_minimum_required(VERSION 3.24)
           project(ui_framework_ci LANGUAGES CXX)
 
@@ -97,25 +97,25 @@ jobs:
           )
 
           FetchContent_MakeAvailable(SDL3 SDL3_image SDL3_ttf)
-
           add_subdirectory("${UI_FRAMEWORK_SOURCE_DIR}" ui_framework)
-          EOF
+          '@ | Set-Content -Encoding utf8 'ci/consumer/CMakeLists.txt'
 
-          cmake -S ci/consumer -B build \
-            -DUI_FRAMEWORK_SOURCE_DIR="$GITHUB_WORKSPACE" \
-            -DUI_FRAMEWORK_CI_PROFILE="${{ matrix.profile }}" \
-            -DUI_FRAMEWORK_BUILD_TESTS=ON \
-            -DCMAKE_BUILD_TYPE=Debug
+          cmake -S 'ci/consumer' -B 'build' `
+            -DUI_FRAMEWORK_SOURCE_DIR="$env:GITHUB_WORKSPACE" `
+            -DUI_FRAMEWORK_CI_PROFILE="${{ matrix.profile }}" `
+            -DUI_FRAMEWORK_BUILD_TESTS=ON
 
       - name: Build
+        shell: pwsh
         run: cmake --build build --config Debug --parallel
 
       - name: Run tests
+        shell: pwsh
         run: ctest --test-dir build --build-config Debug --output-on-failure
 
   integration-demo:
     name: External consumer / ${{ matrix.profile }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
@@ -123,10 +123,10 @@ jobs:
 
     steps:
       - name: Checkout framework
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout demo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: Valeri-afk/ui_framework_demo
           path: ui_framework_demo
@@ -135,34 +135,34 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Configure demo against this framework commit
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = 'Stop'
 
-          if [[ "${{ matrix.profile }}" == "minimum" ]]; then
-            SDL_VERSION=3.2.0
-            SDL_IMAGE_VERSION=3.2.0
-            SDL_TTF_VERSION=3.2.0
-          else
-            SDL_VERSION=3.4.4
-            SDL_IMAGE_VERSION=3.4.2
-            SDL_TTF_VERSION=3.2.2
-          fi
+          if ('${{ matrix.profile }}' -eq 'minimum') {
+            $SDL_VERSION = '3.2.0'
+            $SDL_IMAGE_VERSION = '3.2.0'
+            $SDL_TTF_VERSION = '3.2.0'
+          } else {
+            $SDL_VERSION = '3.4.4'
+            $SDL_IMAGE_VERSION = '3.4.2'
+            $SDL_TTF_VERSION = '3.2.2'
+          }
 
-          cmake -S ui_framework_demo -B build-demo \
-            -DUI_FRAMEWORK_SOURCE_DIR="$GITHUB_WORKSPACE" \
-            -DUI_FRAMEWORK_GIT_TAG="$GITHUB_SHA" \
-            -DUI_FRAMEWORK_SDL_VERSION="$SDL_VERSION" \
-            -DUI_FRAMEWORK_SDL_IMAGE_VERSION="$SDL_IMAGE_VERSION" \
-            -DUI_FRAMEWORK_SDL_TTF_VERSION="$SDL_TTF_VERSION" \
-            -DCMAKE_BUILD_TYPE=Debug
+          cmake -S 'ui_framework_demo' -B 'build-demo' `
+            -DUI_FRAMEWORK_SOURCE_DIR="$env:GITHUB_WORKSPACE" `
+            -DUI_FRAMEWORK_GIT_TAG="${env:GITHUB_SHA}" `
+            -DUI_FRAMEWORK_SDL_VERSION="$SDL_VERSION" `
+            -DUI_FRAMEWORK_SDL_IMAGE_VERSION="$SDL_IMAGE_VERSION" `
+            -DUI_FRAMEWORK_SDL_TTF_VERSION="$SDL_TTF_VERSION"
 
       - name: Build demo
+        shell: pwsh
         run: cmake --build build-demo --config Debug --parallel
 
       - name: Run demo smoke test
-        shell: bash
-        env:
-          SDL_VIDEODRIVER: dummy
-          SDL_RENDER_DRIVER: software
-        run: ./build-demo/ui_framework_demo --smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake -E env SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software `
+            '.\build-demo\Debug\ui_framework_demo.exe' --smoke
